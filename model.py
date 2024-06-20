@@ -1,6 +1,6 @@
+##importing all the libraries
 import warnings
 warnings.filterwarnings("ignore", message="numpy.*")
-
 import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
@@ -19,6 +19,8 @@ import csv
 import re
 import math
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import root_mean_squared_error
 import time
 import keras
 from keras import callbacks
@@ -31,6 +33,7 @@ path = '43.csv'
 df = pd.read_csv(path)
 print(df.shape)
 
+## Data Preprocessing
 cols = []
 
 with open(path, 'r') as file:
@@ -89,7 +92,7 @@ plt.plot(df1)
 plt.show()
 
 
-#split training and test size
+##split training and test size
 training_size=int(len(df1)*0.75)
 test_size=len(df1)-training_size
 train_data,test_data=df1[0:training_size,:],df1[training_size:len(df1),:1]
@@ -109,6 +112,7 @@ X_test, ytest = create_dataset(test_data, time_step)
 X_train =X_train.reshape(X_train.shape[0],X_train.shape[1] , 1)
 X_test = X_test.reshape(X_test.shape[0],X_test.shape[1] , 1)
 
+## Propsed Model
 model=Sequential()
 model.add(Conv1D(filters=64, kernel_size=5, strides=1, padding="causal",activation="relu", input_shape=[100, 1]))
 model.add(Bidirectional(LSTM(64, return_sequences=True)))
@@ -118,3 +122,29 @@ model.add(GRU(64, return_sequences=True))
 model.add(LSTM(50))
 model.add(Dense(1))
 model.compile(loss=loss_function,optimizer='adam')
+
+## Training the model
+filepath="model_1.h5"
+checkpoint = callbacks.ModelCheckpoint(filepath, monitor='val_loss',save_best_only=True, mode='min',verbose=1)
+callbacks_list = [checkpoint]
+
+print('Training started ... ...')
+t1 = time.time()
+history = model.fit(X_train,y_train,validation_data=(X_test,ytest),epochs=epochs,batch_size=64,verbose=1,  callbacks=callbacks_list)
+print('------------------------------------------------------------------')
+t2 = time.time()
+print('Training Time: ', (t2-t1)/60.0, 'Minutes')
+
+## Loading the saved weight
+model.load_weights("/content/model_1.h5")
+
+## Prediction
+train_predict=model.predict(X_train)
+test_predict=model.predict(X_test)
+
+## Evaluation
+## Example for calculating mean sqaured error
+
+error_name = 'mean_squared_error'
+
+error = mean_squared_error(ytest,test_predict)
